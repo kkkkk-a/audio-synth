@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>オーディオシンセ</title>
-    <link rel="icon" href="favicon.ico">
+    <title>Sonic Lab V5 FINAL</title>
     <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
     <style>
         :root {
@@ -84,7 +83,7 @@
             display: flex; align-items: center;
             background: #2a2a2a; border: 1px solid #444; border-radius: 3px;
             overflow: hidden; transition: 0.2s;
-            flex-shrink: 0; /* Prevent shrinking on mobile */
+            flex-shrink: 0;
         }
         .preset-chip.active { border-color: var(--accent); }
         .preset-chip.active .p-name { background: var(--accent-dim); color: #fff; }
@@ -128,16 +127,27 @@
         input[type="range"] {
             -webkit-appearance: none; width: 100%; height: 4px;
             background: #111; border-radius: 2px; outline: none; border: 1px solid #444;
-            padding: 0; margin: 5px 0; /* Add touch space */
+            padding: 0; margin: 5px 0;
         }
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 14px; height: 18px; /* Slightly bigger for touch */
+            -webkit-appearance: none; width: 14px; height: 18px;
             background: #ccc; border-radius: 1px; cursor: pointer;
         }
         input[type="range"].accent-slider::-webkit-slider-thumb { background: var(--accent); }
         input[type="range"].rev-slider::-webkit-slider-thumb { background: #d0f; }
         input[type="range"].hpf-slider::-webkit-slider-thumb { background: #fa0; }
         select { width: 100%; background: #111; color: #eee; border: 1px solid #555; padding: 4px; font-size: 0.7rem; }
+
+        /* SEQUENCER STYLES */
+        .seq-row {
+            display: flex; gap: 4px; margin-top: 5px; justify-content: space-between;
+        }
+        .seq-step {
+            flex: 1; height: 20px; background: #333; border: 1px solid #555;
+            border-radius: 2px; cursor: pointer;
+        }
+        .seq-step.active { background: var(--accent); box-shadow: 0 0 5px var(--accent); border-color: #fff; }
+        .seq-step.current { border: 1px solid #fff; }
 
         /* UTILITY */
         .utility-bar {
@@ -148,20 +158,15 @@
         @keyframes blink { 50% { opacity: 0.7; } }
 
         /* PIANO */
-      .piano-wrapper {
+        .piano-wrapper {
             position: relative; background: #111; border-top: 1px solid #000;
             padding: 10px 0 5px 0; margin-top: 10px;
-            
-            /* hidden を auto に変更して横スクロールを許可します */
             overflow-x: auto;
-            /* スマホでのスクロールを滑らかにします */
             -webkit-overflow-scrolling: touch;
         }
-       .piano { 
+        .piano { 
             display: flex; justify-content: center; height: 150px; position: relative;
-            
-            /* 鍵盤全体が潰れないように最小幅を確保します */
-            min-width: 800px; 
+            min-width: 800px;
         }
         .key { position: relative; border-radius: 0 0 3px 3px; cursor: pointer; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 10px; }
         .key.white { flex: 1; background: #e0e0e0; border: 1px solid #999; z-index: 1; max-width: 50px; }
@@ -200,7 +205,7 @@
         .modal-content p { font-size: 0.85rem; line-height: 1.6; color: #aaa; margin: 5px 0; }
         .close-modal { width: 100%; padding: 10px; background: #333; border: 1px solid #555; color: #fff; margin-top: 20px; cursor: pointer; }
 
-        /* --- MOBILE RESPONSIVE TWEAKS --- */
+        /* MOBILE RESPONSIVE */
         @media (max-width: 600px) {
             body { padding: 5px; }
             header { flex-direction: column; gap: 10px; align-items: stretch; }
@@ -208,7 +213,7 @@
             h1 { text-align: center; font-size: 1.1rem; }
             .std-btn { flex: 1; padding: 8px 0; font-size: 0.75rem; min-width: 60px; }
             .synth-wrapper { padding: 10px; }
-            .piano { height: 130px; } /* Slightly simpler height */
+            .piano { height: 130px; }
             .utility-bar { flex-wrap: wrap; gap: 10px; justify-content: center; }
             .utility-group { flex: 1; display: flex; justify-content: center; min-width: 100px; }
             .modal-content { padding: 15px; width: 95%; }
@@ -311,6 +316,23 @@
                     <label>Speed <span class="val-disp" id="val-arp-speed">120</span></label>
                     <input type="range" id="arp-speed" min="60" max="600" step="10" value="120">
                 </div>
+                
+                <!-- シーケンサー / ドラム選択 -->
+                <div class="param">
+                    <label>
+                        Rhythm Seq
+                        <select id="seq-drum-type" style="width:auto; padding:0; height:16px; font-size:10px;">
+                            <option value="off">OFF</option>
+                            <option value="kick">KICK</option>
+                            <option value="snare">SNARE</option>
+                            <option value="hihat">HI-HAT</option>
+                            <option value="tom">TOM</option>
+                        </select>
+                    </label>
+                    <div class="seq-row" id="seq-row">
+                        <!-- JS generated -->
+                    </div>
+                </div>
             </div>
 
             <div class="module">
@@ -340,7 +362,9 @@
                 <button class="std-btn" id="oct-up">OCT +</button>
             </div>
             <div class="utility-group">
-                <select id="rec-format" style="width:auto; margin-right:5px; padding:4px;"></select>
+                <select id="rec-format" style="width:auto; margin-right:5px; padding:4px;">
+                    <!-- JS populated -->
+                </select>
                 <button class="std-btn rec-btn" id="rec-btn">● REC</button>
             </div>
         </div>
@@ -351,64 +375,49 @@
     </div>
 
     <!-- HELP -->
- <div class="modal-overlay" id="help-modal">
+    <div class="modal-overlay" id="help-modal">
         <div class="modal-content">
             <h2>User Manual & Guide</h2>
 
-            <h3>1. VCO (音のキャラクターを決める)</h3>
-            <p>シンセサイザーの心臓部です。音の「波形」を選びます。</p>
-            <p>
-                <strong>Sawtooth (ノコギリ波):</strong> 弦楽器やブラスのような、鋭くきらびやかな音。<br>
-                <strong>Square (矩形波):</strong> ファミコンのような音や、温かいクラリネット風の音。<br>
-                <strong>Triangle (三角波):</strong> 丸く柔らかい、フルートのような音。<br>
-                <strong>Sine (正弦波):</strong> 角のない純粋な音。サブベースなどに。<br>
-                <span style="color:var(--accent)">★ Detune:</span> 音を重ねて微妙にずらし、コーラス効果のような厚みを出します。
+            <h3>1. VCO (音のキャラクター)</h3>
+            <p>音の「食材」選びです。<br>
+                <strong>Sawtooth:</strong> 鋭く万能な音。<br>
+                <strong>Square:</strong> ゲーム風の中空な音。<br>
+                <strong>Triangle/Sine:</strong> 丸く柔らかい純粋な音。<br>
+                <span style="color:var(--accent)">★ Detune:</span> 音を重ねて厚みを出します。
             </p>
 
-            <h3>2. VCF (音の明るさを調整する)</h3>
-            <p>音の成分を削って、音色を加工するフィルターです。</p>
+            <h3>2. VCF & Env (音色と動き)</h3>
+            <p><strong>Filter:</strong> Cutoffを下げると音がこもり(暗く)、上げると明るくなります。<br>
+            <strong>Envelope (ADSR):</strong> 鍵盤を押した時の「音量の変化」です。Attack(立ち上がり)、Release(余韻)が重要です。</p>
+
+            <h3>3. Mod / Arp & Sequencer (自動演奏)</h3>
             <p>
-                <strong>LPF Cutoff:</strong> 数値を下げると高音が削られ、こもった「暗い音」になります。<br>
-                <strong>Resonance:</strong> カットオフ点を強調し、音に癖をつけます。「ミョン」「ビヨビヨ」という癖がつきます。<br>
-                <strong>HPF Cutoff:</strong> 低音を削ります。音をスッキリさせたり、カリカリにしたい時に。
+                <strong>Arp:</strong> ONにすると、押さえた和音を分散して演奏します。<br>
+                <strong>Rhythm Seq:</strong> 8個のボタンでリズムを作れます。光っている場所で音が鳴ります。<br>
+                <strong>Rhythm Menu:</strong> ボタンの横のメニューで、鳴らすドラムの種類を選べます。<br>
+                - <strong>KICK:</strong> ドン！(バスドラム)<br>
+                - <strong>SNARE:</strong> タン！(スネア)<br>
+                - <strong>HI-HAT:</strong> チッ！(ハイハット)<br>
+                - <strong>TOM:</strong> ポン！(タム)<br>
+                ※ OFF以外を選ぶと、鍵盤を押さなくてもリズムが鳴り始めます。
             </p>
 
-            <h3>3. Envelope (音の時間変化を作る)</h3>
-            <p>鍵盤を押してから離すまでの「音量のカーブ」を作ります（ADSR）。</p>
+            <h3>4. FX (エフェクト)</h3>
+            <p><strong>Delay:</strong> やまびこ効果。 <strong>Reverb:</strong> ホールのような残響。</p>
+
+            <h3>5. 保存形式について (REC)</h3>
             <p>
-                <strong>A (Attack):</strong> 立ち上がりの速さ。0なら瞬時、上げると「ふわっ」と鳴ります。<br>
-                <strong>D (Decay):</strong> 最大音量からSustainレベルに下がるまでの時間。<br>
-                <strong>S (Sustain):</strong> 鍵盤を押し続けている間の音量。0にするとピアノのように減衰します。<br>
-                <strong>R (Release):</strong> 鍵盤を離した後の余韻の長さ。
+                <strong>WAV (CD Quality):</strong> 最高音質。PCでの編集向き。<br>
+                <strong>MP3 (Lightweight):</strong> 軽量で扱いやすい形式。SNSなどに。<br>
+                <strong>WebM / MP4:</strong> ブラウザ標準。動作が最も安定しています。
             </p>
 
-            <h3>4. Mod / Arp (動きと自動演奏)</h3>
+            <h3>基本操作</h3>
             <p>
-                <strong>LFO:</strong> 音を揺らします。Rateで速さ、Depthで揺れの深さを決めます（ビブラート効果）。<br>
-                <strong>Arpeggiator:</strong> 和音（コード）を押さえると、自動で分散してパラパラと演奏します。<br>
-                ※ ArpをONにしてSpeedでテンポ調整、Styleはランダム等が選べます。
-            </p>
-
-            <h3>5. FX (空間エフェクト)</h3>
-            <p>
-                <strong>Delay:</strong> 「やまびこ」効果です。Mixで音量、Timeで間隔を調整。<br>
-                <strong>Reverb:</strong> コンサートホールのような響き（残響）を加えます。
-            </p>
-
-            <h3>6. 保存形式について (REC)</h3>
-            <p>録音ボタン横のメニューから、保存するファイルの形式を選べます。</p>
-            <p>
-                <strong>WAV (CD Quality):</strong> 音を圧縮しない一番きれいな形式です。音楽制作ソフトで編集する場合などに最適です。<br>
-                <strong>MP3 (Lightweight):</strong> 容量を小さく圧縮した形式です。音質は少しだけ変わりますが、スマホでの再生やSNS送信に便利です。<br>
-                <strong>WebM / MP4:</strong> ブラウザ標準の形式です。Android/PCではWebM、iPhoneではMP4(AAC)が自動選択されます。動作が一番安定しています。
-            </p>
-
-            <h3>基本操作・便利な機能</h3>
-            <p>
-                <strong>🎹 演奏方法:</strong> 画面の鍵盤をタッチするか、PCキーボード（Z〜M段、Q〜U段）で弾けます。<br>
-                <strong>🖱️ Visualizer:</strong> 上部の波形画面をクリックすると、「波形(Wave)」と「周波数(Spectrum)」表示が切り替わります。<br>
-                <strong>💾 SAVE / INIT:</strong>作った音色を保存したり、初期状態に戻せます。<br>
-                <strong>🛑 PANIC:</strong> 音が止まらなくなった時や、動作をリセットしたい時に押してください。
+                <strong>🎹 演奏:</strong> タッチ、マウスクリック、PCキーボード、MIDIキーボードに対応。<br>
+                <strong>🖱️ Visualizer:</strong> 波形画面クリックで表示モード切替。<br>
+                <strong>🛑 PANIC:</strong> 音が止まらない時の緊急停止ボタン。
             </p>
 
             <button class="close-modal" id="close-help">閉じる</button>
@@ -416,7 +425,8 @@
     </div>
 
     <script>
-     const factoryPresets = {
+        // --- PRESETS ---
+        const factoryPresets = {
             "Init Saw": { oscType:'sawtooth', cutoff:2000, res:1, hpf:0, atk:0.01, dec:0.3, sus:0.8, rel:0.2, lfoDepth:0, delayMix:0, reverbMix:0, arp:false },
             "Deep Space": { oscType:'sawtooth', cutoff:800, res:3, hpf:100, atk:1.0, dec:2.0, sus:0.6, rel:3.0, lfoDepth:20, delayMix:0.5, reverbMix:1.2, arp:false },
             "Acid Bass": { oscType:'square', cutoff:400, res:12, hpf:0, atk:0.01, dec:0.2, sus:0, rel:0.1, lfoDepth:0, delayMix:0.2, reverbMix:0, arp:false },
@@ -428,7 +438,8 @@
         let masterGain, compressor, analyser;
         let delayNode, delayFb, delayMix, revNode, revMix;
         let recStream, mediaRecorder, chunks = [];
-        let visMode = 0; // 0: Wave, 1: Spectrum
+        let visMode = 0;
+        let noiseBuffer = null; // for snare/hihat
 
         // 録音用バッファ（WAV/MP3用）
         let wavRecNode;
@@ -457,19 +468,81 @@
             return buffer;
         }
 
+        // --- DRUM ENGINE ---
+        function createNoiseBuffer() {
+            if(noiseBuffer) return;
+            const bufSize = ctx.sampleRate * 2; 
+            noiseBuffer = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) output[i] = Math.random() * 2 - 1;
+        }
+
+        function playDrum(type, time) {
+            const t = time || ctx.currentTime;
+            const gain = ctx.createGain();
+            
+            if (type === 'kick') {
+                const osc = ctx.createOscillator();
+                osc.frequency.setValueAtTime(150, t);
+                osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.5);
+                gain.gain.setValueAtTime(1, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+                osc.connect(gain); osc.start(t); osc.stop(t + 0.5);
+            } 
+            else if (type === 'tom') {
+                const osc = ctx.createOscillator();
+                osc.frequency.setValueAtTime(200, t);
+                osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.5);
+                gain.gain.setValueAtTime(0.8, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+                osc.connect(gain); osc.start(t); osc.stop(t + 0.5);
+            }
+            else if (type === 'snare') {
+                // Tone
+                const osc = ctx.createOscillator();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(250, t);
+                const oscGain = ctx.createGain();
+                oscGain.gain.setValueAtTime(0.5, t);
+                oscGain.gain.exponentialRampToValueAtTime(0.01, t+0.2);
+                osc.connect(oscGain); oscGain.connect(gain);
+                osc.start(t); osc.stop(t+0.2);
+
+                // Noise
+                if(!noiseBuffer) createNoiseBuffer();
+                const noise = ctx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                const noiseFilter = ctx.createBiquadFilter();
+                noiseFilter.type = 'highpass'; noiseFilter.frequency.value = 1000;
+                const noiseGain = ctx.createGain();
+                noiseGain.gain.setValueAtTime(0.6, t);
+                noiseGain.gain.exponentialRampToValueAtTime(0.01, t+0.3);
+                noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(gain);
+                noise.start(t); noise.stop(t+0.3);
+            }
+            else if (type === 'hihat') {
+                if(!noiseBuffer) createNoiseBuffer();
+                const noise = ctx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                const noiseFilter = ctx.createBiquadFilter();
+                noiseFilter.type = 'highpass'; noiseFilter.frequency.value = 8000;
+                gain.gain.setValueAtTime(0.4, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t+0.05);
+                noise.connect(noiseFilter); noiseFilter.connect(gain);
+                noise.start(t); noise.stop(t+0.05);
+            }
+
+            gain.connect(masterGain);
+        }
+
         function initAudio() {
             if(masterGain) return;
             masterGain = ctx.createGain(); masterGain.gain.value = 0.5;
             compressor = ctx.createDynamicsCompressor();
-            // Mastering settings
-            compressor.threshold.value = -24;
-            compressor.knee.value = 30;
-            compressor.ratio.value = 12;
-            compressor.attack.value = 0.003;
-            compressor.release.value = 0.25;
+            compressor.threshold.value = -24; compressor.knee.value = 30;
+            compressor.ratio.value = 12; compressor.attack.value = 0.003; compressor.release.value = 0.25;
 
-            analyser = ctx.createAnalyser();
-            analyser.fftSize = 2048;
+            analyser = ctx.createAnalyser(); analyser.fftSize = 2048;
 
             delayNode = ctx.createDelay(); delayNode.delayTime.value = params.delayTime;
             delayFb = ctx.createGain(); delayFb.gain.value = 0.4;
@@ -479,39 +552,33 @@
             revNode = ctx.createConvolver(); revNode.buffer = createReverbImpulse(3.5, 2.5);
             revMix = ctx.createGain(); revMix.gain.value = params.reverbMix;
 
-            // Routing
             masterGain.connect(compressor);
-            compressor.connect(delayNode);
-            compressor.connect(revNode);
+            compressor.connect(delayNode); compressor.connect(revNode);
             revNode.connect(revMix);
 
             const finalMix = ctx.createGain();
-            compressor.connect(finalMix);
-            delayMix.connect(finalMix);
-            revMix.connect(finalMix);
+            compressor.connect(finalMix); delayMix.connect(finalMix); revMix.connect(finalMix);
 
-            // ▼▼▼ WAV/MP3録音用のScriptProcessor ▼▼▼
-            // バッファサイズ4096, 入力2ch, 出力2ch
+            // Create Noise Buffer for Drums
+            createNoiseBuffer();
+
+            // WAV/MP3録音用ScriptProcessor
             wavRecNode = ctx.createScriptProcessor(4096, 2, 2);
             wavRecNode.onaudioprocess = function(e) {
-                // 録音中ならデータを保存
                 if (isRecording) {
                     const L = e.inputBuffer.getChannelData(0);
                     const R = e.inputBuffer.getChannelData(1);
-                    // バッファのコピーを保存（参照だと上書きされるため）
                     wavLeft.push(new Float32Array(L));
                     wavRight.push(new Float32Array(R));
                 }
-                // 音を出力へスルーさせる（これがないと音が消える）
                 e.outputBuffer.copyToChannel(e.inputBuffer.getChannelData(0), 0);
                 e.outputBuffer.copyToChannel(e.inputBuffer.getChannelData(1), 1);
             };
 
             finalMix.connect(wavRecNode);
-            wavRecNode.connect(analyser); // レコーダー経由でVisualizerへ
+            wavRecNode.connect(analyser); 
             analyser.connect(ctx.destination);
             
-            // WebM/MP4用（MediaRecorder用）のストリーム
             const dest = ctx.createMediaStreamDestination();
             finalMix.connect(dest);
             recStream = dest.stream;
@@ -546,7 +613,6 @@
 
             const vca = ctx.createGain(); vca.gain.setValueAtTime(0, t);
             
-            // Envelope
             const a=params.atk, d=params.dec, s=params.sus;
             if(duration>0) {
                 vca.gain.linearRampToValueAtTime(velocity, t+0.005);
@@ -584,41 +650,75 @@
             }
         }
 
-        // --- UPDATES ---
-        function updateParamsRealtime() {
-            if(!delayMix) return;
-            const t = ctx.currentTime;
-            delayMix.gain.setTargetAtTime(params.delayMix, t, 0.1);
-            revMix.gain.setTargetAtTime(params.reverbMix, t, 0.1);
-            Object.values(activeVoices).forEach(v => {
-                v.lpf.frequency.setTargetAtTime(params.cutoff, t, 0.1);
-                v.lpf.Q.setTargetAtTime(params.res, t, 0.1);
-                v.hpf.frequency.setTargetAtTime(params.hpf, t, 0.1);
-            });
-        }
-
-        // --- ARPEGGIATOR ---
+        // --- ARPEGGIATOR & SEQUENCER ---
         const arpKeys = new Set();
         let arpTimer = null, arpIdx = 0;
+        const sequence = [1, 1, 1, 1, 1, 1, 1, 1];
+        
+        // Build Seq UI
+        const seqContainer = document.getElementById('seq-row');
+        const seqStepsEl = [];
+        for(let i=0; i<8; i++) {
+            const d = document.createElement('div');
+            d.className = 'seq-step active';
+            d.onclick = () => {
+                sequence[i] = sequence[i] ? 0 : 1;
+                d.className = sequence[i] ? 'seq-step active' : 'seq-step';
+            };
+            seqContainer.appendChild(d); seqStepsEl.push(d);
+        }
+
         function startArp() {
-            if(arpKeys.size===0) { clearInterval(arpTimer); arpTimer=null; return; }
-            if(!arpTimer) { arpTimer = setInterval(arpStep, 60000/params.arpSpeed/2); arpStep(); }
+            const drumType = document.getElementById('seq-drum-type').value;
+            if(arpKeys.size===0 && drumType === 'off') { clearInterval(arpTimer); arpTimer=null; updateSeqUI(-1); return; }
+            
+            if(!arpTimer) { 
+                arpTimer = setInterval(arpStep, 60000/params.arpSpeed/2);
+                arpStep(); 
+            }
         }
+
         function arpStep() {
-            if(arpKeys.size===0) return;
-            const keys = Array.from(arpKeys).sort((a,b)=>a-b);
-            let playKeys = params.arpStyle==='down' ? keys.slice().reverse() :
-                           params.arpStyle==='updown' ? keys.concat(keys.slice(0,-1).reverse()) : keys;
-            if(params.arpStyle==='random') playKeys=keys;
-            
-            let note = params.arpStyle==='random' ? playKeys[Math.floor(Math.random()*playKeys.length)] :
-                       playKeys[arpIdx % playKeys.length];
-            if(params.arpStyle!=='random') arpIdx++;
-            
-            const dur = (60/params.arpSpeed)*0.8;
-            playOsc(note+(params.octave*12), 0.8, dur);
-            drawKey(note, true); setTimeout(()=>drawKey(note,false), 100);
+            const currentStep = arpIdx % 8;
+            updateSeqUI(currentStep);
+
+            if (sequence[currentStep] === 1) {
+                // Drum
+                const drumType = document.getElementById('seq-drum-type').value;
+                if(drumType !== 'off') playDrum(drumType, ctx.currentTime);
+
+                // Synth Arp
+                if (arpKeys.size > 0) {
+                    const keys = Array.from(arpKeys).sort((a,b)=>a-b);
+                    let playKeys = params.arpStyle==='down' ? keys.slice().reverse() :
+                                   params.arpStyle==='updown' ? keys.concat(keys.slice(0,-1).reverse()) : keys;
+                    
+                    let note;
+                    if(params.arpStyle==='random') note = playKeys[Math.floor(Math.random()*playKeys.length)];
+                    else {
+                        const noteIdx = Math.floor(arpIdx / 1);
+                        note = playKeys[noteIdx % playKeys.length];
+                    }
+
+                    const dur = (60/params.arpSpeed)*0.8;
+                    playOsc(note+(params.octave*12), 0.8, dur);
+                    drawKey(note, true); setTimeout(()=>drawKey(note,false), 100);
+                }
+            }
+            arpIdx++;
         }
+
+        function updateSeqUI(current) {
+            seqStepsEl.forEach((el, i) => {
+                const isActive = sequence[i] === 1;
+                el.className = `seq-step ${isActive ? 'active' : ''} ${i === current ? 'current' : ''}`;
+            });
+        }
+        
+        document.getElementById('seq-drum-type').onchange = (e) => {
+             if(e.target.value !== 'off') { initAudio(); if(ctx.state==='suspended') ctx.resume(); startArp(); }
+             else if(arpKeys.size === 0) { clearInterval(arpTimer); arpTimer=null; updateSeqUI(-1); }
+        };
 
         // --- VISUALIZER ---
         const canvas = document.getElementById('scope');
@@ -639,7 +739,7 @@
             cCtx.fillStyle = '#000'; cCtx.fillRect(0,0,canvas.width,canvas.height);
             cCtx.lineWidth = 2; cCtx.strokeStyle = '#00ffcc';
 
-            if(visMode === 0) { // Waveform
+            if(visMode === 0) {
                 analyser.getByteTimeDomainData(dataArr);
                 cCtx.beginPath();
                 const slice = canvas.width/2048; let x=0;
@@ -648,10 +748,9 @@
                     i===0?cCtx.moveTo(x,y):cCtx.lineTo(x,y); x+=slice;
                 }
                 cCtx.stroke();
-            } else { // Spectrum
+            } else {
                 analyser.getByteFrequencyData(dataArr);
-                const barW = (canvas.width / 128) * 2.5;
-                let x = 0;
+                const barW = (canvas.width / 128) * 2.5; let x = 0;
                 for(let i=0; i<128; i++) {
                     const h = (dataArr[i]/255) * canvas.height;
                     cCtx.fillStyle = `hsl(${i*2}, 100%, 50%)`;
@@ -661,20 +760,18 @@
             }
         }
 
-        // --- PRESETS & SAVE ---
+        // --- PRESETS & GUI ---
         const presetBar = document.getElementById('preset-bar');
         let userPresets = JSON.parse(localStorage.getItem('sonic_v5_presets')||'{}');
 
         function drawPresets() {
             presetBar.innerHTML = '<span class="preset-label">BANK:</span>';
-            // Factory
             for(let name in factoryPresets) {
                 const c = document.createElement('div'); c.className='preset-chip';
                 const b = document.createElement('div'); b.className='p-name'; b.innerText=name;
                 b.onclick=()=>loadPreset(factoryPresets[name]);
                 c.appendChild(b); presetBar.appendChild(c);
             }
-            // User
             for(let name in userPresets) {
                 const c = document.createElement('div'); c.className='preset-chip active';
                 c.style.borderColor='var(--save-color)';
@@ -701,18 +798,6 @@
             updateDisplays(); updateParamsRealtime();
         }
 
-        document.getElementById('save-btn').onclick = () => {
-            const name = prompt("プリセット名を入力して保存:");
-            if(name) {
-                userPresets[name] = {...params};
-                localStorage.setItem('sonic_v5_presets', JSON.stringify(userPresets));
-                drawPresets();
-            }
-        };
-
-        document.getElementById('init-btn').onclick = () => { if(confirm("設定を初期化しますか？")) loadPreset(factoryPresets["Init Saw"]); };
-
-        // --- GUI HANDLING ---
         function updateDisplays() {
             document.getElementById('val-detune').innerText = params.detune;
             document.getElementById('val-cutoff').innerText = params.cutoff+'Hz';
@@ -720,6 +805,18 @@
             document.getElementById('val-hpf').innerText = params.hpf+'Hz';
             document.getElementById('val-lfo-rate').innerText = params.lfoRate+'Hz';
             document.getElementById('val-arp-speed').innerText = params.arpSpeed;
+        }
+
+        function updateParamsRealtime() {
+            if(!delayMix) return;
+            const t = ctx.currentTime;
+            delayMix.gain.setTargetAtTime(params.delayMix, t, 0.1);
+            revMix.gain.setTargetAtTime(params.reverbMix, t, 0.1);
+            Object.values(activeVoices).forEach(v => {
+                v.lpf.frequency.setTargetAtTime(params.cutoff, t, 0.1);
+                v.lpf.Q.setTargetAtTime(params.res, t, 0.1);
+                v.hpf.frequency.setTargetAtTime(params.hpf, t, 0.1);
+            });
         }
 
         document.querySelectorAll('input[type="range"], select').forEach(el => {
@@ -730,7 +827,18 @@
                 if(id==='env-atk') params.atk=v; if(id==='env-dec') params.dec=v; if(id==='env-sus') params.sus=v; if(id==='env-rel') params.rel=v;
                 if(id==='lfo-rate') params.lfoRate=v; if(id==='lfo-depth') params.lfoDepth=v;
                 if(id==='delay-mix') params.delayMix=v; if(id==='delay-time') { params.delayTime=v; if(delayNode) delayNode.delayTime.linearRampToValueAtTime(v, ctx.currentTime+0.1); }
-                if(id==='reverb-mix') params.reverbMix=v; if(id==='arp-speed') params.arpSpeed=v;
+                if(id==='reverb-mix') params.reverbMix=v; 
+                
+                // SPEED CHANGE REALTIME FIX
+                if(id==='arp-speed') {
+                    params.arpSpeed = v;
+                    // If sequence running, restart interval
+                    if(arpTimer) {
+                        clearInterval(arpTimer);
+                        arpTimer = setInterval(arpStep, 60000/params.arpSpeed/2);
+                    }
+                }
+                
                 updateDisplays(); updateParamsRealtime();
             });
         });
@@ -739,20 +847,23 @@
         function toggleArp(state) {
             params.arpEnabled=state; arpBtn.innerText=state?'ON':'OFF';
             arpBtn.style.background = state?'var(--accent)':'#333';
-            if(!state) { clearInterval(arpTimer); arpTimer=null; arpKeys.clear(); }
+            if(!state && document.getElementById('seq-drum-type').value === 'off') { clearInterval(arpTimer); arpTimer=null; arpKeys.clear(); }
         }
         arpBtn.onclick=()=>toggleArp(!params.arpEnabled);
 
+        document.getElementById('save-btn').onclick = () => {
+            const name = prompt("プリセット名を入力して保存:");
+            if(name) { userPresets[name] = {...params}; localStorage.setItem('sonic_v5_presets', JSON.stringify(userPresets)); drawPresets(); }
+        };
+        document.getElementById('init-btn').onclick = () => { if(confirm("設定を初期化しますか？")) loadPreset(factoryPresets["Init Saw"]); };
+        
         const octD = document.getElementById('oct-disp');
         document.getElementById('oct-down').onclick=()=>{if(params.octave>-2)params.octave--; octD.innerText=params.octave;};
         document.getElementById('oct-up').onclick=()=>{if(params.octave<2)params.octave++; octD.innerText=params.octave;};
 
         const keyBtn = document.getElementById('key-btn');
         const pianoEl = document.getElementById('piano');
-        keyBtn.onclick = () => {
-            pianoEl.classList.toggle('show-hints');
-            keyBtn.classList.toggle('active');
-        };
+        keyBtn.onclick = () => { pianoEl.classList.toggle('show-hints'); keyBtn.classList.toggle('active'); };
 
         const panicBtn = document.getElementById('panic-btn');
         panicBtn.onclick = () => {
@@ -762,10 +873,9 @@
                 if(delayMix) delayMix.gain.setValueAtTime(0,t); if(revMix) revMix.gain.setValueAtTime(0,t);
             }
             clearInterval(arpTimer); arpTimer=null; arpKeys.clear();
+            isRecording=false; wavLeft=[]; wavRight=[];
             Object.values(activeVoices).forEach(v=>{try{v.osc.stop();v.lfo.stop();}catch(e){}});
             for(let k in activeVoices) delete activeVoices[k];
-            // 録音リセット
-            isRecording=false; wavLeft=[]; wavRight=[];
             setTimeout(()=>{
                 document.body.classList.remove('panic-active'); panicBtn.classList.remove('flash');
                 if(masterGain) masterGain.gain.setTargetAtTime(0.5,ctx.currentTime,0.5);
@@ -779,62 +889,45 @@
         const pcKeyMap = "ZSXDCVGBHNJMQ2W3ER5T6Y7UI".split('');
         for(let i=48; i<=72; i++) {
             const isB = [1,3,6,8,10].includes(i%12);
-            const k = document.createElement('div');
-            k.className = `key ${isB?'black':'white'}`;
-            k.dataset.midi = i;
-            const hint = document.createElement('span');
-            hint.className = 'key-hint';
-            const char = pcKeyMap[i-48];
-            if(char) hint.innerText = char;
+            const k = document.createElement('div'); k.className = `key ${isB?'black':'white'}`; k.dataset.midi = i;
+            const hint = document.createElement('span'); hint.className = 'key-hint';
+            const char = pcKeyMap[i-48]; if(char) hint.innerText = char;
             k.appendChild(hint);
             if(isB) k.style.left = ((wC*100/15)-(100/15/2))+'%'; else wC++;
-            pianoEl.appendChild(k);
-            keysEl.push({midi:i, el:k});
+            pianoEl.appendChild(k); keysEl.push({midi:i, el:k});
         }
         function drawKey(m,on) {
-            const dM=m+(params.octave*-12);
-            const k=keysEl.find(x=>x.midi===dM);
+            const dM=m+(params.octave*-12); const k=keysEl.find(x=>x.midi===dM);
             if(k) on?k.el.classList.add('active'):k.el.classList.remove('active');
         }
 
-        // Input Listeners
+        // --- INPUTS ---
         let isDown=false;
-        const getM = e => e.target.classList.contains('key')?parseInt(e.target.dataset.midi):
-                          e.target.parentNode.classList.contains('key')?parseInt(e.target.parentNode.dataset.midi):null;
+        const getM = e => e.target.classList.contains('key')?parseInt(e.target.dataset.midi):e.target.parentNode.classList.contains('key')?parseInt(e.target.parentNode.dataset.midi):null;
         
-        // Mouse
         pianoEl.addEventListener('mousedown',e=>{isDown=true; const m=getM(e); if(m) noteOn(m);});
         window.addEventListener('mouseup',()=>{isDown=false; keysEl.forEach(k=>{if(k.el.classList.contains('active')&&!params.arpEnabled)noteOff(k.midi);}); if(params.arpEnabled) arpKeys.clear();});
         pianoEl.addEventListener('mouseover',e=>{if(isDown){const m=getM(e); if(m) noteOn(m);}});
         pianoEl.addEventListener('mouseout',e=>{if(isDown){const m=getM(e); if(m) noteOff(m);}});
 
-        // Touch (Mobile Support)
+        // Touch
         const activeTouches = {};
         pianoEl.addEventListener('touchstart', e => {
             e.preventDefault();
             for(let i=0; i<e.changedTouches.length; i++) {
-                const t = e.changedTouches[i];
-                const el = document.elementFromPoint(t.clientX, t.clientY);
-                if(el) {
-                    const m = getM({target: el});
-                    if(m !== null) { noteOn(m); activeTouches[t.identifier] = m; }
-                }
+                const t = e.changedTouches[i]; const el = document.elementFromPoint(t.clientX, t.clientY);
+                if(el) { const m = getM({target: el}); if(m!==null) { noteOn(m); activeTouches[t.identifier] = m; }}
             }
         }, {passive: false});
 
         pianoEl.addEventListener('touchmove', e => {
             e.preventDefault();
             for(let i=0; i<e.changedTouches.length; i++) {
-                const t = e.changedTouches[i];
-                const el = document.elementFromPoint(t.clientX, t.clientY);
-                const oldM = activeTouches[t.identifier];
-                let newM = null;
+                const t = e.changedTouches[i]; const el = document.elementFromPoint(t.clientX, t.clientY);
+                const oldM = activeTouches[t.identifier]; let newM = null;
                 if(el) newM = getM({target: el});
-
                 if(newM !== null && oldM !== newM) {
-                    if(oldM !== undefined) noteOff(oldM);
-                    noteOn(newM);
-                    activeTouches[t.identifier] = newM;
+                    if(oldM !== undefined) noteOff(oldM); noteOn(newM); activeTouches[t.identifier] = newM;
                 }
             }
         }, {passive: false});
@@ -842,72 +935,43 @@
         pianoEl.addEventListener('touchend', e => {
             e.preventDefault();
             for(let i=0; i<e.changedTouches.length; i++) {
-                const t = e.changedTouches[i];
-                const m = activeTouches[t.identifier];
+                const t = e.changedTouches[i]; const m = activeTouches[t.identifier];
                 if(m !== undefined) { noteOff(m); delete activeTouches[t.identifier]; }
             }
         });
 
-        // PC Keys
+        // PC Key
         const kMap={}; pcKeyMap.forEach((k,i)=>kMap[k]=48+i);
         window.addEventListener('keydown',e=>{if(!e.repeat&&kMap[e.key.toUpperCase()]) noteOn(kMap[e.key.toUpperCase()]);});
         window.addEventListener('keyup',e=>{if(kMap[e.key.toUpperCase()]) noteOff(kMap[e.key.toUpperCase()]);});
-        
-        // --- REC (ALL FORMATS) ---
+
+        // MIDI
+        if(navigator.requestMIDIAccess) navigator.requestMIDIAccess().then(a=>{a.inputs.forEach(i=>i.onmidimessage=m=>{const[c,n,v]=m.data; if(c===144&&v>0){noteOn(n,v/127); document.getElementById('midi-dot').classList.add('on');} if(c===128||(c===144&&v===0)){noteOff(n); document.getElementById('midi-dot').classList.remove('on');}});});
+
+        // --- RECORDER ---
         const recBtn = document.getElementById('rec-btn');
         const recSelect = document.getElementById('rec-format');
         
-        // 1. 手動追加 (WAV, MP3)
-        const optWav = document.createElement('option');
-        optWav.value = 'wav'; optWav.innerText = 'WAV (CD Quality)';
-        recSelect.appendChild(optWav);
-
-        const optMp3 = document.createElement('option');
-        optMp3.value = 'mp3'; optMp3.innerText = 'MP3 (Lightweight)';
-        recSelect.appendChild(optMp3);
-
-        // 2. ブラウザ標準 (WebM, MP4等)
-        const supportedTypes = [
-            { type: 'audio/webm', ext: 'webm', label: 'WebM (Browser)' },
-            { type: 'audio/mp4',  ext: 'mp4',  label: 'MP4 (Safari)' },
-        ];
-        supportedTypes.forEach(t => {
-            if (MediaRecorder.isTypeSupported(t.type)) {
-                const opt = document.createElement('option');
-                opt.value = t.type; opt.innerText = t.label; opt.dataset.ext = t.ext;
-                recSelect.appendChild(opt);
-            }
-        });
+        const optWav = document.createElement('option'); optWav.value = 'wav'; optWav.innerText = 'WAV (CD Quality)'; recSelect.appendChild(optWav);
+        const optMp3 = document.createElement('option'); optMp3.value = 'mp3'; optMp3.innerText = 'MP3 (Lightweight)'; recSelect.appendChild(optMp3);
+        const supportedTypes = [{ type: 'audio/webm', ext: 'webm', label: 'WebM (Browser)' }, { type: 'audio/mp4',  ext: 'mp4',  label: 'MP4 (Safari)' }];
+        supportedTypes.forEach(t => { if (MediaRecorder.isTypeSupported(t.type)) { const opt = document.createElement('option'); opt.value = t.type; opt.innerText = t.label; opt.dataset.ext = t.ext; recSelect.appendChild(opt); }});
 
         recBtn.onclick = () => {
             initAudio();
-
-            // ■ START REC
             if (!recBtn.classList.contains('active')) {
                 const type = recSelect.value;
-                
-                // 生データ録音モード (WAV/MP3)
-                if (type === 'wav' || type === 'mp3') {
-                    wavLeft = []; wavRight = [];
-                    isRecording = true;
-                } else {
-                    // 標準モード (WebM/MP4)
+                if (type === 'wav' || type === 'mp3') { wavLeft = []; wavRight = []; isRecording = true; }
+                else {
                     chunks = [];
-                    try {
-                        mediaRecorder = new MediaRecorder(recStream, { mimeType: type });
-                    } catch(e) { alert("Error: Not supported format"); return; }
+                    try { mediaRecorder = new MediaRecorder(recStream, { mimeType: type }); } catch(e) { alert("Format Error"); return; }
                     mediaRecorder.ondataavailable = e => chunks.push(e.data);
                     mediaRecorder.start();
                 }
-
-                recBtn.classList.add('active'); recBtn.innerText = '■ STOP';
-                recSelect.disabled = true;
-
-            // ■ STOP REC & SAVE
+                recBtn.classList.add('active'); recBtn.innerText = '■ STOP'; recSelect.disabled = true;
             } else {
                 const f = prompt("保存ファイル名:", `sonic_rec_${Date.now()}`);
                 if (!f) {
-                     // キャンセル処理
                      isRecording = false; 
                      if(mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop();
                      recBtn.classList.remove('active'); recBtn.innerText = '● REC'; recSelect.disabled = false;
@@ -915,29 +979,21 @@
                 }
 
                 const type = recSelect.value;
-
                 if (type === 'wav') {
-                    // WAV SAVE
                     isRecording = false;
                     const blob = exportWAV(wavLeft, wavRight);
                     saveBlob(blob, f + ".wav");
-                    wavLeft = []; wavRight = []; // Clear Memory
-                
+                    wavLeft = []; wavRight = [];
                 } else if (type === 'mp3') {
-                    // MP3 SAVE
-                    isRecording = false;
-                    recBtn.innerText = 'Encoding...';
+                    isRecording = false; recBtn.innerText = 'Encoding...';
                     setTimeout(() => {
                         const blob = exportMP3(wavLeft, wavRight);
                         if(blob) saveBlob(blob, f + ".mp3");
                         wavLeft = []; wavRight = [];
-                        recBtn.classList.remove('active'); recBtn.innerText = '● REC';
-                        recSelect.disabled = false;
-                    }, 50); // UI更新のために少し遅延
-                    return; // 下の共通リセット処理をスキップ
-
+                        recBtn.classList.remove('active'); recBtn.innerText = '● REC'; recSelect.disabled = false;
+                    }, 50);
+                    return; 
                 } else {
-                    // WebM/MP4 SAVE
                     mediaRecorder.onstop = () => {
                         const ext = recSelect.options[recSelect.selectedIndex].dataset.ext;
                         const blob = new Blob(chunks, { type: type });
@@ -946,116 +1002,65 @@
                     mediaRecorder.stop();
                 }
 
-                if(type !== 'mp3') {
-                    recBtn.classList.remove('active'); recBtn.innerText = '● REC';
-                    recSelect.disabled = false;
-                }
+                if(type !== 'mp3') { recBtn.classList.remove('active'); recBtn.innerText = '● REC'; recSelect.disabled = false; }
             }
         };
 
         function saveBlob(blob, filename) {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = filename;
-            a.click();
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
         }
 
-        // --- ENCODER FUNCTIONS ---
-        function writeString(view, offset, string) {
-            for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
-        }
-
+        // --- EXPORT UTIL ---
+        function writeString(view, offset, string) { for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i)); }
+        
         function exportWAV(leftBuffers, rightBuffers) {
-            // Flatten
             const bufferLen = leftBuffers.reduce((acc, b) => acc + b.length, 0);
-            const L = new Float32Array(bufferLen);
-            const R = new Float32Array(bufferLen);
+            const L = new Float32Array(bufferLen); const R = new Float32Array(bufferLen);
             let offset = 0;
-            for (let i=0; i<leftBuffers.length; i++) {
-                L.set(leftBuffers[i], offset); R.set(rightBuffers[i], offset);
-                offset += leftBuffers[i].length;
-            }
-
-            // Interleave & Convert to Int16
+            for (let i=0; i<leftBuffers.length; i++) { L.set(leftBuffers[i], offset); R.set(rightBuffers[i], offset); offset += leftBuffers[i].length; }
             const interleaved = new Int16Array(bufferLen * 2);
             for (let i=0; i<bufferLen; i++) {
-                let sL = Math.max(-1, Math.min(1, L[i]));
-                let sR = Math.max(-1, Math.min(1, R[i]));
-                interleaved[i*2] = sL < 0 ? sL * 0x8000 : sL * 0x7FFF;
-                interleaved[i*2+1] = sR < 0 ? sR * 0x8000 : sR * 0x7FFF;
+                let sL = Math.max(-1, Math.min(1, L[i])); let sR = Math.max(-1, Math.min(1, R[i]));
+                interleaved[i*2] = sL < 0 ? sL * 0x8000 : sL * 0x7FFF; interleaved[i*2+1] = sR < 0 ? sR * 0x8000 : sR * 0x7FFF;
             }
-
-            // Header
-            const buffer = new ArrayBuffer(44 + interleaved.length * 2);
-            const view = new DataView(buffer);
-            writeString(view, 0, 'RIFF');
-            view.setUint32(4, 36 + interleaved.length * 2, true);
-            writeString(view, 8, 'WAVE');
-            writeString(view, 12, 'fmt ');
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true);
-            view.setUint16(22, 2, true);
-            view.setUint32(24, ctx.sampleRate, true);
-            view.setUint32(28, ctx.sampleRate * 4, true);
-            view.setUint16(32, 4, true);
-            view.setUint16(34, 16, true);
-            writeString(view, 36, 'data');
-            view.setUint32(40, interleaved.length * 2, true);
-
-            const payload = new Uint8Array(buffer, 44);
-            payload.set(new Uint8Array(interleaved.buffer));
-
+            const buffer = new ArrayBuffer(44 + interleaved.length * 2); const view = new DataView(buffer);
+            writeString(view, 0, 'RIFF'); view.setUint32(4, 36 + interleaved.length * 2, true); writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 2, true);
+            view.setUint32(24, ctx.sampleRate, true); view.setUint32(28, ctx.sampleRate * 4, true); view.setUint16(32, 4, true); view.setUint16(34, 16, true);
+            writeString(view, 36, 'data'); view.setUint32(40, interleaved.length * 2, true);
+            const payload = new Uint8Array(buffer, 44); payload.set(new Uint8Array(interleaved.buffer));
             return new Blob([buffer], { type: 'audio/wav' });
         }
 
         function exportMP3(leftBuffers, rightBuffers) {
-            if(typeof lamejs === 'undefined') {
-                alert("MP3 Library not loaded. Please connect to internet.");
-                return null;
-            }
-
+            if(typeof lamejs === 'undefined') { alert("MP3 Library not loaded."); return null; }
             const bufferLen = leftBuffers.reduce((acc, b) => acc + b.length, 0);
-            const samplesL = new Int16Array(bufferLen);
-            const samplesR = new Int16Array(bufferLen);
+            const samplesL = new Int16Array(bufferLen); const samplesR = new Int16Array(bufferLen);
             let offset = 0;
-            
             for (let i = 0; i < leftBuffers.length; i++) {
                 const bL = leftBuffers[i]; const bR = rightBuffers[i];
                 for(let j=0; j<bL.length; j++) {
-                    let sL = Math.max(-1, Math.min(1, bL[j]));
-                    let sR = Math.max(-1, Math.min(1, bR[j]));
-                    samplesL[offset + j] = sL < 0 ? sL * 0x8000 : sL * 0x7FFF;
-                    samplesR[offset + j] = sR < 0 ? sR * 0x8000 : sR * 0x7FFF;
+                    let sL = Math.max(-1, Math.min(1, bL[j])); let sR = Math.max(-1, Math.min(1, bR[j]));
+                    samplesL[offset + j] = sL < 0 ? sL * 0x8000 : sL * 0x7FFF; samplesR[offset + j] = sR < 0 ? sR * 0x8000 : sR * 0x7FFF;
                 }
                 offset += bL.length;
             }
-
             const mp3encoder = new lamejs.Mp3Encoder(2, ctx.sampleRate || 44100, 128);
-            const mp3Data = [];
-            const sampleBlockSize = 1152;
-            
+            const mp3Data = []; const sampleBlockSize = 1152;
             for (let i = 0; i < samplesL.length; i += sampleBlockSize) {
-                const leftChunk = samplesL.subarray(i, i + sampleBlockSize);
-                const rightChunk = samplesR.subarray(i, i + sampleBlockSize);
+                const leftChunk = samplesL.subarray(i, i + sampleBlockSize); const rightChunk = samplesR.subarray(i, i + sampleBlockSize);
                 const mp3buf = mp3encoder.encodeBuffer(leftChunk, rightChunk);
                 if (mp3buf.length > 0) mp3Data.push(mp3buf);
             }
-            const mp3buf = mp3encoder.flush();
-            if (mp3buf.length > 0) mp3Data.push(mp3buf);
-
+            const mp3buf = mp3encoder.flush(); if (mp3buf.length > 0) mp3Data.push(mp3buf);
             return new Blob(mp3Data, { type: 'audio/mp3' });
         }
 
-        // MIDI
-        if(navigator.requestMIDIAccess) navigator.requestMIDIAccess().then(a=>{a.inputs.forEach(i=>i.onmidimessage=m=>{const[c,n,v]=m.data; if(c===144&&v>0){noteOn(n,v/127); document.getElementById('midi-dot').classList.add('on');} if(c===128||(c===144&&v===0)){noteOff(n); document.getElementById('midi-dot').classList.remove('on');}});});
-
-        // Modal
         const modal=document.getElementById('help-modal');
         document.getElementById('help-btn').onclick=()=>modal.classList.add('open');
         document.getElementById('close-help').onclick=()=>modal.classList.remove('open');
         modal.onclick=(e)=>{if(e.target===modal)modal.classList.remove('open');};
 
-        // Init
         drawPresets(); updateDisplays();
     </script>
 </body>
