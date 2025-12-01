@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>オーディオシンセ Mobile</title>
+    <title>オーディオシンセ</title>
     <link rel="icon" href="favicon.ico">
+    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
     <style>
         :root {
             --bg-color: #121212;
@@ -18,7 +19,7 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
             display: flex;
@@ -26,12 +27,11 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            padding: 10px 5px; /* モバイル用にパディング調整 */
+            padding: 10px;
             box-sizing: border-box;
             user-select: none;
-            -webkit-user-select: none;
-            touch-action: pan-y; /* 横スクロール無効化 */
-            overscroll-behavior: none;
+            touch-action: none;
+            transition: background 0.1s;
         }
         body.panic-active { background-color: #400 !important; }
 
@@ -39,27 +39,20 @@
         header {
             width: 100%; max-width: 940px;
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 10px;
-            flex-wrap: wrap; /* モバイルで折り返し */
-            gap: 10px;
+            margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px;
         }
-        h1 { margin: 0; font-weight: 300; letter-spacing: 1px; color: #fff; font-size: 1.1rem; }
+        h1 { margin: 0; font-weight: 300; letter-spacing: 2px; color: #fff; font-size: 1.2rem; }
         h1 span { color: var(--accent); font-weight: bold; font-size: 0.8em; margin-left: 5px; }
-        
-        .header-controls { 
-            display: flex; gap: 6px; flex-wrap: wrap; 
-            justify-content: flex-end;
-        }
+        .header-controls { display: flex; gap: 8px; }
 
-        button { font-family: inherit; outline: none; -webkit-tap-highlight-color: transparent; }
+        button { font-family: inherit; outline: none; }
         .std-btn {
             background: #333; color: #fff; border: 1px solid #555;
-            padding: 8px 12px; /* タッチしやすいように少し大きく */
-            border-radius: 4px; cursor: pointer;
-            font-size: 0.8rem; transition: 0.2s;
-            touch-action: manipulation;
+            padding: 5px 12px; border-radius: 4px; cursor: pointer;
+            font-size: 0.75rem; transition: 0.2s;
         }
-        .std-btn:active { transform: translateY(1px); background: #555; }
+        .std-btn:hover { background: #444; border-color: #777; }
+        .std-btn:active { transform: translateY(1px); }
 
         .panic-btn { border-color: var(--panic-color); color: var(--panic-color); background: rgba(50,0,0,0.3); }
         .panic-btn:active, .panic-btn.flash { background: var(--panic-color); color: #fff; box-shadow: 0 0 15px var(--panic-color); }
@@ -67,51 +60,48 @@
         .save-btn { border-color: var(--save-color); color: var(--save-color); background: rgba(50,50,0,0.2); }
         .save-btn:hover { background: var(--save-color); color: #000; }
 
-        .key-btn { border-color: var(--guide-color); color: var(--guide-color); display: none; /* モバイルではデフォルト非表示推奨 */ }
-        @media(min-width: 768px) { .key-btn { display: inline-block; } }
+        .key-btn { border-color: var(--guide-color); color: var(--guide-color); }
+        .key-btn.active { background: var(--guide-color); color: #000; }
 
         /* SYNTH PANEL */
         .synth-wrapper {
             background-color: var(--panel-bg);
             border: 1px solid #444; border-radius: 6px;
-            padding: 10px;
+            padding: 15px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.8);
             width: 100%; max-width: 940px;
             box-sizing: border-box;
-            margin-bottom: 20px;
         }
 
         /* PRESET BAR */
         .preset-bar {
-            display: flex; gap: 8px; margin-bottom: 15px;
+            display: flex; gap: 6px; margin-bottom: 15px;
             overflow-x: auto; padding-bottom: 5px; align-items: center;
-            background: #151515; padding: 10px; border-radius: 4px; border: 1px solid #333;
-            -webkit-overflow-scrolling: touch; /* スムーズスクロール */
+            background: #151515; padding: 8px; border-radius: 4px; border: 1px solid #333;
         }
-        /* スクロールバー非表示（見た目すっきり） */
-        .preset-bar::-webkit-scrollbar { height: 4px; display: none; }
-        
-        .preset-label { font-size: 0.7rem; font-weight: bold; color: #888; margin-right: 5px; flex-shrink: 0; }
+        .preset-label { font-size: 0.7rem; font-weight: bold; color: #888; margin-right: 5px; }
         .preset-chip {
-            display: flex; align-items: center; flex-shrink: 0;
+            display: flex; align-items: center;
             background: #2a2a2a; border: 1px solid #444; border-radius: 3px;
             overflow: hidden; transition: 0.2s;
+            flex-shrink: 0; /* Prevent shrinking on mobile */
         }
         .preset-chip.active { border-color: var(--accent); }
         .preset-chip.active .p-name { background: var(--accent-dim); color: #fff; }
-        .p-name { padding: 8px 12px; font-size: 0.8rem; cursor: pointer; color: #bbb; white-space: nowrap; }
-        .p-name:active { background: #444; color: #fff; }
+        .p-name { padding: 4px 8px; font-size: 0.75rem; cursor: pointer; color: #bbb; white-space: nowrap; }
+        .p-name:hover { color: #fff; background: #333; }
         .p-del {
-            padding: 8px 10px; font-size: 0.8rem; cursor: pointer;
+            padding: 4px 6px; font-size: 0.7rem; cursor: pointer;
             color: #666; background: #222; border-left: 1px solid #444;
         }
+        .p-del:hover { background: #d00; color: #fff; }
 
         /* VISUALIZER */
         .visualizer-container {
             background: #000; border: 1px solid #444; border-radius: 4px;
-            height: 80px; margin-bottom: 15px; position: relative; cursor: pointer;
-            touch-action: none;
+            height: 64px; margin-bottom: 15px; position: relative; cursor: pointer;
         }
+        .visualizer-container:hover { border-color: var(--accent); }
         .vis-label {
             position: absolute; top: 4px; right: 6px; font-size: 10px; color: #666; pointer-events: none;
         }
@@ -120,96 +110,75 @@
         /* CONTROLS */
         .controls-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr); /* モバイルは2列 */
-            gap: 8px; margin-bottom: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px; margin-bottom: 15px;
         }
-        @media(min-width: 600px) {
-            .controls-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
-        }
-
         .module {
             background: #252525; padding: 10px; border-radius: 4px;
             border: 1px solid #3a3a3a;
         }
         .module h3 {
-            margin: 0 0 10px 0; font-size: 0.75rem; font-weight: 600;
+            margin: 0 0 10px 0; font-size: 0.7rem; font-weight: 600;
             color: #888; border-bottom: 2px solid #444; padding-bottom: 4px;
         }
-        .param { display: flex; flex-direction: column; margin-bottom: 10px; }
-        label { font-size: 0.7rem; margin-bottom: 5px; display: flex; justify-content: space-between; color: #aaa; }
-        .val-disp { color: var(--accent); font-family: monospace; font-size: 0.75rem; }
+        .param { display: flex; flex-direction: column; margin-bottom: 8px; }
+        label { font-size: 0.65rem; margin-bottom: 3px; display: flex; justify-content: space-between; color: #aaa; }
+        .val-disp { color: var(--accent); font-family: monospace; font-size: 0.7rem; }
 
-        /* Range Slider Styling for Mobile */
         input[type="range"] {
-            -webkit-appearance: none; width: 100%; height: 24px; /* タッチ領域確保 */
-            background: transparent; outline: none; margin: 0; padding: 0;
-            touch-action: none; /* スライダー操作時のスクロール防止 */
+            -webkit-appearance: none; width: 100%; height: 4px;
+            background: #111; border-radius: 2px; outline: none; border: 1px solid #444;
+            padding: 0; margin: 5px 0; /* Add touch space */
         }
-        /* Track */
-        input[type="range"]::-webkit-slider-runnable-track {
-            width: 100%; height: 4px; background: #111; border-radius: 2px; border: 1px solid #444;
-        }
-        input[type="range"]::-moz-range-track {
-            width: 100%; height: 4px; background: #111; border-radius: 2px; border: 1px solid #444;
-        }
-        /* Thumb */
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%;
-            background: #ccc; cursor: pointer; margin-top: -8px; /* track center */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            -webkit-appearance: none; width: 14px; height: 18px; /* Slightly bigger for touch */
+            background: #ccc; border-radius: 1px; cursor: pointer;
         }
-        input[type="range"]::-moz-range-thumb {
-            height: 18px; width: 18px; border-radius: 50%; border: none;
-            background: #ccc; cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-        }
-        
         input[type="range"].accent-slider::-webkit-slider-thumb { background: var(--accent); }
         input[type="range"].rev-slider::-webkit-slider-thumb { background: #d0f; }
         input[type="range"].hpf-slider::-webkit-slider-thumb { background: #fa0; }
-        
-        select { 
-            width: 100%; background: #111; color: #eee; border: 1px solid #555; 
-            padding: 8px; font-size: 0.8rem; border-radius: 4px;
-        }
+        select { width: 100%; background: #111; color: #eee; border: 1px solid #555; padding: 4px; font-size: 0.7rem; }
 
         /* UTILITY */
         .utility-bar {
             display: flex; justify-content: space-between; align-items: center;
             background: #1a1a1a; padding: 8px; border-radius: 4px; margin-bottom: 0; border: 1px solid #333;
         }
-        .utility-group { display: flex; align-items: center; }
         .rec-btn.active { background: #d00; border-color: #f00; color: #fff; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.7; } }
 
         /* PIANO */
-        .piano-wrapper {
+      .piano-wrapper {
             position: relative; background: #111; border-top: 1px solid #000;
-            padding: 10px 0 20px 0; overflow: hidden; margin-top: 10px;
-            touch-action: none; /* 鍵盤操作時のスクロール完全無効化 */
+            padding: 10px 0 5px 0; margin-top: 10px;
+            
+            /* hidden を auto に変更して横スクロールを許可します */
+            overflow-x: auto;
+            /* スマホでのスクロールを滑らかにします */
+            -webkit-overflow-scrolling: touch;
         }
-        .piano { display: flex; justify-content: center; height: 160px; position: relative; }
-        .key { 
-            position: relative; border-radius: 0 0 4px 4px; cursor: pointer; 
-            display: flex; justify-content: center; align-items: flex-end; padding-bottom: 10px; 
-            touch-action: none;
+       .piano { 
+            display: flex; justify-content: center; height: 150px; position: relative;
+            
+            /* 鍵盤全体が潰れないように最小幅を確保します */
+            min-width: 800px; 
         }
-        .key.white { flex: 1; background: #e0e0e0; border: 1px solid #999; z-index: 1; max-width: 14vw; }
-        .key.white.active { background: #bbb; transform: scaleY(0.98); border-bottom: 4px solid var(--accent); }
+        .key { position: relative; border-radius: 0 0 3px 3px; cursor: pointer; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 10px; }
+        .key.white { flex: 1; background: #e0e0e0; border: 1px solid #999; z-index: 1; max-width: 50px; }
+        .key.white.active { background: #ccc; transform: scaleY(0.98); border-bottom: 4px solid var(--accent); }
         .key.black {
-            width: 60%; max-width: 9vw; height: 55%; background: #111;
+            width: 60%; max-width: 32px; height: 60%; background: #111;
             position: absolute; z-index: 2; left: 0; transform: translateX(-50%);
             border: 1px solid #000; box-shadow: inset 0 0 5px rgba(255,255,255,0.2);
-            padding-bottom: 8px; border-radius: 0 0 3px 3px;
+            padding-bottom: 8px;
         }
         .key.black.active { background: #333; transform: translateX(-50%) scaleY(0.98); border-bottom: 2px solid var(--accent); }
 
         .key-hint {
             font-size: 10px; color: var(--guide-color); font-weight: bold; pointer-events: none; opacity: 0; transition: opacity 0.2s;
         }
+        .key.black .key-hint { color: #fff; font-size: 9px; }
         .show-hints .key-hint { opacity: 1; }
-        /* モバイルではキーヒント基本非表示 */
-        @media(max-width: 767px) { .key-hint { display: none !important; } }
 
         .midi-dot { width: 8px; height: 8px; border-radius: 50%; background: #444; display: inline-block; margin-right: 5px; }
         .midi-dot.on { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
@@ -223,24 +192,37 @@
         .modal-overlay.open { display: flex; }
         .modal-content {
             background: #222; border: 1px solid #555; width: 90%; max-width: 600px;
-            max-height: 80vh; overflow-y: auto; padding: 20px; color: #ddd;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8); border-radius: 8px;
-            -webkit-overflow-scrolling: touch;
+            max-height: 90vh; overflow-y: auto; padding: 25px; color: #ddd;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
-        .modal-content h2 { border-bottom: 1px solid var(--accent); color: var(--accent); margin-top: 0; padding-bottom: 10px; font-size: 1.2rem; }
+        .modal-content h2 { border-bottom: 1px solid var(--accent); color: var(--accent); margin-top: 0; padding-bottom: 10px; }
         .modal-content h3 { font-size: 0.95rem; color: #fff; margin-top: 20px; border-left: 3px solid #555; padding-left: 10px; }
         .modal-content p { font-size: 0.85rem; line-height: 1.6; color: #aaa; margin: 5px 0; }
-        .close-modal { width: 100%; padding: 12px; background: #333; border: 1px solid #555; color: #fff; margin-top: 20px; cursor: pointer; border-radius: 4px; font-size: 1rem; }
+        .close-modal { width: 100%; padding: 10px; background: #333; border: 1px solid #555; color: #fff; margin-top: 20px; cursor: pointer; }
+
+        /* --- MOBILE RESPONSIVE TWEAKS --- */
+        @media (max-width: 600px) {
+            body { padding: 5px; }
+            header { flex-direction: column; gap: 10px; align-items: stretch; }
+            .header-controls { justify-content: space-between; flex-wrap: wrap; }
+            h1 { text-align: center; font-size: 1.1rem; }
+            .std-btn { flex: 1; padding: 8px 0; font-size: 0.75rem; min-width: 60px; }
+            .synth-wrapper { padding: 10px; }
+            .piano { height: 130px; } /* Slightly simpler height */
+            .utility-bar { flex-wrap: wrap; gap: 10px; justify-content: center; }
+            .utility-group { flex: 1; display: flex; justify-content: center; min-width: 100px; }
+            .modal-content { padding: 15px; width: 95%; }
+        }
 
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Sonic Lab <span>V5 MOBILE</span></h1>
+        <h1>Sonic Lab <span>V5 MASTER</span></h1>
         <div class="header-controls">
             <button class="std-btn" id="init-btn">INIT</button>
-            <button class="std-btn key-btn" id="key-btn" title="Show Keyboard Hints">KEY</button>
+            <button class="std-btn key-btn" id="key-btn" title="Show Keyboard Hints">⌨ KEY</button>
             <button class="std-btn save-btn" id="save-btn">💾 SAVE</button>
             <button class="std-btn panic-btn" id="panic-btn">🛑 PANIC</button>
             <button class="std-btn" id="help-btn">HELP</button>
@@ -321,9 +303,9 @@
                     <label>LFO Depth</label>
                     <input type="range" id="lfo-depth" min="0" max="100" value="0">
                 </div>
-                <div class="param" style="flex-direction:row; justify-content:space-between; margin-top:5px; align-items:center;">
-                    <label style="margin:0;">Arp</label>
-                    <button class="std-btn" id="arp-toggle" style="padding:4px 8px; font-size:0.7rem;">OFF</button>
+                <div class="param" style="flex-direction:row; justify-content:space-between; margin-top:5px;">
+                    <label>Arp</label>
+                    <button class="std-btn" id="arp-toggle" style="padding:2px 6px; font-size:0.6rem;">OFF</button>
                 </div>
                 <div class="param">
                     <label>Speed <span class="val-disp" id="val-arp-speed">120</span></label>
@@ -350,71 +332,91 @@
 
         <div class="utility-bar">
             <div class="utility-group">
-                <div class="midi-dot" id="midi-dot"></div> <span style="font-size:0.7rem; color:#666; margin-left:4px;">MIDI</span>
+                <div class="midi-dot" id="midi-dot"></div> <span style="font-size:0.7rem; color:#666;">MIDI</span>
             </div>
             <div class="utility-group">
-                <button class="std-btn" id="oct-down" style="padding:6px 12px;">OCT -</button>
-                <span id="oct-disp" style="font-family:monospace; padding:0 8px; font-size:1.1rem; font-weight:bold;">0</span>
-                <button class="std-btn" id="oct-up" style="padding:6px 12px;">OCT +</button>
+                <button class="std-btn" id="oct-down">OCT -</button>
+                <span id="oct-disp" style="font-family:monospace; padding:0 5px;">0</span>
+                <button class="std-btn" id="oct-up">OCT +</button>
             </div>
             <div class="utility-group">
+                <select id="rec-format" style="width:auto; margin-right:5px; padding:4px;"></select>
                 <button class="std-btn rec-btn" id="rec-btn">● REC</button>
             </div>
         </div>
 
         <div class="piano-wrapper">
-            <div class="piano" id="piano"></div>
+            <div class="piano show-hints" id="piano"></div>
         </div>
     </div>
 
     <!-- HELP -->
-<div class="modal-overlay" id="help-modal">
+ <div class="modal-overlay" id="help-modal">
         <div class="modal-content">
-            <h2>使い方＆用語ガイド</h2>
-            
-            <h3>🖐 基本操作（スマホ・PC）</h3>
-            <p><strong>演奏する:</strong> 鍵盤をタップ（クリック）すると音が鳴ります。<br>
-            <strong>和音（コード）:</strong> スマホでは複数の指で同時に押すと和音が鳴ります。<br>
-            <strong>滑らせて弾く:</strong> 鍵盤の上で指を滑らせると、グリッサンド（連続音）演奏ができます。</p>
+            <h2>User Manual & Guide</h2>
 
-            <h3>🔊 VCO（どんな音を出す？）</h3>
-            <p>音の「素材」を選びます。<br>
-            <strong>Waveform (波形):</strong>
-            <ul style="padding-left:20px; margin:5px 0;">
-                <li>Sawtooth: 「ビー」という鋭い音。派手な音に最適。</li>
-                <li>Square: 「ポー」というファミコン風のレトロな音。</li>
-                <li>Triangle: 「ポー」という角の取れた丸い音。</li>
-                <li>Sine: 「ウー」という一番純粋で優しい音。</li>
-            </ul>
-            <strong>Detune:</strong> 音を微妙にずらして、厚みや広がりを出します。</p>
+            <h3>1. VCO (音のキャラクターを決める)</h3>
+            <p>シンセサイザーの心臓部です。音の「波形」を選びます。</p>
+            <p>
+                <strong>Sawtooth (ノコギリ波):</strong> 弦楽器やブラスのような、鋭くきらびやかな音。<br>
+                <strong>Square (矩形波):</strong> ファミコンのような音や、温かいクラリネット風の音。<br>
+                <strong>Triangle (三角波):</strong> 丸く柔らかい、フルートのような音。<br>
+                <strong>Sine (正弦波):</strong> 角のない純粋な音。サブベースなどに。<br>
+                <span style="color:var(--accent)">★ Detune:</span> 音を重ねて微妙にずらし、コーラス効果のような厚みを出します。
+            </p>
 
-            <h3>🎛 VCF（音の明るさを変える）</h3>
-            <p>音の成分を削って、音色を調整します。<br>
-            <strong>LPF Cutoff:</strong> 数値を下げると、音が「こもって」暗くなります。上げると「明るく」なります。<br>
-            <strong>Resonance:</strong> 音のクセを強めます。上げると「ミョンミョン」「ビヨビヨ」した音になります。<br>
-            <strong>HPF:</strong> 低音を削ります。上げると音が軽く、カリカリになります。</p>
+            <h3>2. VCF (音の明るさを調整する)</h3>
+            <p>音の成分を削って、音色を加工するフィルターです。</p>
+            <p>
+                <strong>LPF Cutoff:</strong> 数値を下げると高音が削られ、こもった「暗い音」になります。<br>
+                <strong>Resonance:</strong> カットオフ点を強調し、音に癖をつけます。「ミョン」「ビヨビヨ」という癖がつきます。<br>
+                <strong>HPF Cutoff:</strong> 低音を削ります。音をスッキリさせたり、カリカリにしたい時に。
+            </p>
 
-            <h3>📈 Envelope（音の形を変える）</h3>
-            <p>音が鳴ってから消えるまでの「時間の変化」を作ります。<br>
-            <strong>Attack:</strong> 音の「出だし」。上げると「ふわっ」と鳴り始めます。<br>
-            <strong>Decay / Sustain:</strong> 音の「伸び」。Sustainを下げるとピアノのように減衰します。<br>
-            <strong>Release:</strong> 音の「余韻」。上げると指を離した後もしばらく響きます。</p>
+            <h3>3. Envelope (音の時間変化を作る)</h3>
+            <p>鍵盤を押してから離すまでの「音量のカーブ」を作ります（ADSR）。</p>
+            <p>
+                <strong>A (Attack):</strong> 立ち上がりの速さ。0なら瞬時、上げると「ふわっ」と鳴ります。<br>
+                <strong>D (Decay):</strong> 最大音量からSustainレベルに下がるまでの時間。<br>
+                <strong>S (Sustain):</strong> 鍵盤を押し続けている間の音量。0にするとピアノのように減衰します。<br>
+                <strong>R (Release):</strong> 鍵盤を離した後の余韻の長さ。
+            </p>
 
-            <h3>〰️ Mod / Arp（動きをつける）</h3>
-            <p><strong>LFO:</strong> 音を揺らします。「ビブラート」や「ウワウワ」した効果を作ります。<br>
-            <strong>Arp (アルペジエーター):</strong> ONにして和音を押さえると、「パラパラパラ…」と自動で分散して演奏してくれます。</p>
+            <h3>4. Mod / Arp (動きと自動演奏)</h3>
+            <p>
+                <strong>LFO:</strong> 音を揺らします。Rateで速さ、Depthで揺れの深さを決めます（ビブラート効果）。<br>
+                <strong>Arpeggiator:</strong> 和音（コード）を押さえると、自動で分散してパラパラと演奏します。<br>
+                ※ ArpをONにしてSpeedでテンポ調整、Styleはランダム等が選べます。
+            </p>
 
-            <h3>🌌 FX（空間の広がり）</h3>
-            <p><strong>Delay:</strong> 「やまびこ」効果です。音が遅れて繰り返されます。<br>
-            <strong>Reverb:</strong> 「お風呂場」や「ホール」のような響きを加えます。</p>
+            <h3>5. FX (空間エフェクト)</h3>
+            <p>
+                <strong>Delay:</strong> 「やまびこ」効果です。Mixで音量、Timeで間隔を調整。<br>
+                <strong>Reverb:</strong> コンサートホールのような響き（残響）を加えます。
+            </p>
+
+            <h3>6. 保存形式について (REC)</h3>
+            <p>録音ボタン横のメニューから、保存するファイルの形式を選べます。</p>
+            <p>
+                <strong>WAV (CD Quality):</strong> 音を圧縮しない一番きれいな形式です。音楽制作ソフトで編集する場合などに最適です。<br>
+                <strong>MP3 (Lightweight):</strong> 容量を小さく圧縮した形式です。音質は少しだけ変わりますが、スマホでの再生やSNS送信に便利です。<br>
+                <strong>WebM / MP4:</strong> ブラウザ標準の形式です。Android/PCではWebM、iPhoneではMP4(AAC)が自動選択されます。動作が一番安定しています。
+            </p>
+
+            <h3>基本操作・便利な機能</h3>
+            <p>
+                <strong>🎹 演奏方法:</strong> 画面の鍵盤をタッチするか、PCキーボード（Z〜M段、Q〜U段）で弾けます。<br>
+                <strong>🖱️ Visualizer:</strong> 上部の波形画面をクリックすると、「波形(Wave)」と「周波数(Spectrum)」表示が切り替わります。<br>
+                <strong>💾 SAVE / INIT:</strong>作った音色を保存したり、初期状態に戻せます。<br>
+                <strong>🛑 PANIC:</strong> 音が止まらなくなった時や、動作をリセットしたい時に押してください。
+            </p>
 
             <button class="close-modal" id="close-help">閉じる</button>
         </div>
     </div>
 
     <script>
-        // --- PRESETS ---
-        const factoryPresets = {
+     const factoryPresets = {
             "Init Saw": { oscType:'sawtooth', cutoff:2000, res:1, hpf:0, atk:0.01, dec:0.3, sus:0.8, rel:0.2, lfoDepth:0, delayMix:0, reverbMix:0, arp:false },
             "Deep Space": { oscType:'sawtooth', cutoff:800, res:3, hpf:100, atk:1.0, dec:2.0, sus:0.6, rel:3.0, lfoDepth:20, delayMix:0.5, reverbMix:1.2, arp:false },
             "Acid Bass": { oscType:'square', cutoff:400, res:12, hpf:0, atk:0.01, dec:0.2, sus:0, rel:0.1, lfoDepth:0, delayMix:0.2, reverbMix:0, arp:false },
@@ -422,12 +424,16 @@
         };
 
         // --- GLOBAL ---
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioContext();
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
         let masterGain, compressor, analyser;
         let delayNode, delayFb, delayMix, revNode, revMix;
         let recStream, mediaRecorder, chunks = [];
         let visMode = 0; // 0: Wave, 1: Spectrum
+
+        // 録音用バッファ（WAV/MP3用）
+        let wavRecNode;
+        let wavLeft = [], wavRight = [];
+        let isRecording = false;
 
         const params = {
             oscType: 'sawtooth', detune: 0,
@@ -453,9 +459,9 @@
 
         function initAudio() {
             if(masterGain) return;
-            // Mobile Safari needs explicit resume in click event usually, done in noteOn wrapper
             masterGain = ctx.createGain(); masterGain.gain.value = 0.5;
             compressor = ctx.createDynamicsCompressor();
+            // Mastering settings
             compressor.threshold.value = -24;
             compressor.knee.value = 30;
             compressor.ratio.value = 12;
@@ -473,6 +479,7 @@
             revNode = ctx.createConvolver(); revNode.buffer = createReverbImpulse(3.5, 2.5);
             revMix = ctx.createGain(); revMix.gain.value = params.reverbMix;
 
+            // Routing
             masterGain.connect(compressor);
             compressor.connect(delayNode);
             compressor.connect(revNode);
@@ -483,9 +490,28 @@
             delayMix.connect(finalMix);
             revMix.connect(finalMix);
 
-            finalMix.connect(ctx.destination);
-            finalMix.connect(analyser);
+            // ▼▼▼ WAV/MP3録音用のScriptProcessor ▼▼▼
+            // バッファサイズ4096, 入力2ch, 出力2ch
+            wavRecNode = ctx.createScriptProcessor(4096, 2, 2);
+            wavRecNode.onaudioprocess = function(e) {
+                // 録音中ならデータを保存
+                if (isRecording) {
+                    const L = e.inputBuffer.getChannelData(0);
+                    const R = e.inputBuffer.getChannelData(1);
+                    // バッファのコピーを保存（参照だと上書きされるため）
+                    wavLeft.push(new Float32Array(L));
+                    wavRight.push(new Float32Array(R));
+                }
+                // 音を出力へスルーさせる（これがないと音が消える）
+                e.outputBuffer.copyToChannel(e.inputBuffer.getChannelData(0), 0);
+                e.outputBuffer.copyToChannel(e.inputBuffer.getChannelData(1), 1);
+            };
+
+            finalMix.connect(wavRecNode);
+            wavRecNode.connect(analyser); // レコーダー経由でVisualizerへ
+            analyser.connect(ctx.destination);
             
+            // WebM/MP4用（MediaRecorder用）のストリーム
             const dest = ctx.createMediaStreamDestination();
             finalMix.connect(dest);
             recStream = dest.stream;
@@ -496,9 +522,7 @@
         const activeVoices = {};
 
         function noteOn(midi, velocity=1, duration=0) {
-            initAudio(); 
-            if(ctx.state === 'suspended') ctx.resume();
-            
+            initAudio(); if(ctx.state==='suspended') ctx.resume();
             if(document.body.classList.contains('panic-active')) return;
             if(params.arpEnabled) { arpKeys.add(midi); startArp(); return; }
             playOsc(midi, velocity, duration);
@@ -506,7 +530,6 @@
 
         function playOsc(midi, velocity, duration) {
             const pitch = midi + (params.octave*12);
-            // Don't cut off if it's the same note in poly mode, but standard synth behavior often restarts
             if(duration===0 && activeVoices[pitch]) noteOff(midi, true);
 
             const t = ctx.currentTime;
@@ -523,6 +546,7 @@
 
             const vca = ctx.createGain(); vca.gain.setValueAtTime(0, t);
             
+            // Envelope
             const a=params.atk, d=params.dec, s=params.sus;
             if(duration>0) {
                 vca.gain.linearRampToValueAtTime(velocity, t+0.005);
@@ -560,6 +584,7 @@
             }
         }
 
+        // --- UPDATES ---
         function updateParamsRealtime() {
             if(!delayMix) return;
             const t = ctx.currentTime;
@@ -614,7 +639,7 @@
             cCtx.fillStyle = '#000'; cCtx.fillRect(0,0,canvas.width,canvas.height);
             cCtx.lineWidth = 2; cCtx.strokeStyle = '#00ffcc';
 
-            if(visMode === 0) {
+            if(visMode === 0) { // Waveform
                 analyser.getByteTimeDomainData(dataArr);
                 cCtx.beginPath();
                 const slice = canvas.width/2048; let x=0;
@@ -623,7 +648,7 @@
                     i===0?cCtx.moveTo(x,y):cCtx.lineTo(x,y); x+=slice;
                 }
                 cCtx.stroke();
-            } else {
+            } else { // Spectrum
                 analyser.getByteFrequencyData(dataArr);
                 const barW = (canvas.width / 128) * 2.5;
                 let x = 0;
@@ -636,18 +661,20 @@
             }
         }
 
-        // --- PRESETS ---
+        // --- PRESETS & SAVE ---
         const presetBar = document.getElementById('preset-bar');
         let userPresets = JSON.parse(localStorage.getItem('sonic_v5_presets')||'{}');
 
         function drawPresets() {
             presetBar.innerHTML = '<span class="preset-label">BANK:</span>';
+            // Factory
             for(let name in factoryPresets) {
                 const c = document.createElement('div'); c.className='preset-chip';
                 const b = document.createElement('div'); b.className='p-name'; b.innerText=name;
                 b.onclick=()=>loadPreset(factoryPresets[name]);
                 c.appendChild(b); presetBar.appendChild(c);
             }
+            // User
             for(let name in userPresets) {
                 const c = document.createElement('div'); c.className='preset-chip active';
                 c.style.borderColor='var(--save-color)';
@@ -685,6 +712,7 @@
 
         document.getElementById('init-btn').onclick = () => { if(confirm("設定を初期化しますか？")) loadPreset(factoryPresets["Init Saw"]); };
 
+        // --- GUI HANDLING ---
         function updateDisplays() {
             document.getElementById('val-detune').innerText = params.detune;
             document.getElementById('val-cutoff').innerText = params.cutoff+'Hz';
@@ -695,9 +723,6 @@
         }
 
         document.querySelectorAll('input[type="range"], select').forEach(el => {
-            // Touch move prevent default to avoid scrolling
-            el.addEventListener('touchmove', e => e.stopPropagation(), {passive: true});
-            
             el.addEventListener('input', e => {
                 const id=e.target.id; const v=e.target.type==='range'?parseFloat(e.target.value):e.target.value;
                 if(id==='osc-type') params.oscType=v; if(id==='osc-detune') params.detune=v;
@@ -739,6 +764,8 @@
             clearInterval(arpTimer); arpTimer=null; arpKeys.clear();
             Object.values(activeVoices).forEach(v=>{try{v.osc.stop();v.lfo.stop();}catch(e){}});
             for(let k in activeVoices) delete activeVoices[k];
+            // 録音リセット
+            isRecording=false; wavLeft=[]; wavRight=[];
             setTimeout(()=>{
                 document.body.classList.remove('panic-active'); panicBtn.classList.remove('flash');
                 if(masterGain) masterGain.gain.setTargetAtTime(0.5,ctx.currentTime,0.5);
@@ -755,13 +782,11 @@
             const k = document.createElement('div');
             k.className = `key ${isB?'black':'white'}`;
             k.dataset.midi = i;
-            // Hint
             const hint = document.createElement('span');
             hint.className = 'key-hint';
             const char = pcKeyMap[i-48];
             if(char) hint.innerText = char;
             k.appendChild(hint);
-
             if(isB) k.style.left = ((wC*100/15)-(100/15/2))+'%'; else wC++;
             pianoEl.appendChild(k);
             keysEl.push({midi:i, el:k});
@@ -772,123 +797,254 @@
             if(k) on?k.el.classList.add('active'):k.el.classList.remove('active');
         }
 
-        // --- MOUSE & TOUCH EVENTS (Mobile Optimized) ---
-        let isMouseDown = false;
+        // Input Listeners
+        let isDown=false;
+        const getM = e => e.target.classList.contains('key')?parseInt(e.target.dataset.midi):
+                          e.target.parentNode.classList.contains('key')?parseInt(e.target.parentNode.dataset.midi):null;
+        
+        // Mouse
+        pianoEl.addEventListener('mousedown',e=>{isDown=true; const m=getM(e); if(m) noteOn(m);});
+        window.addEventListener('mouseup',()=>{isDown=false; keysEl.forEach(k=>{if(k.el.classList.contains('active')&&!params.arpEnabled)noteOff(k.midi);}); if(params.arpEnabled) arpKeys.clear();});
+        pianoEl.addEventListener('mouseover',e=>{if(isDown){const m=getM(e); if(m) noteOn(m);}});
+        pianoEl.addEventListener('mouseout',e=>{if(isDown){const m=getM(e); if(m) noteOff(m);}});
 
-        // Helper to get midi from element
-        const getMidiFromEl = (el) => {
-            if(!el) return null;
-            if(el.classList.contains('key')) return parseInt(el.dataset.midi);
-            if(el.parentNode && el.parentNode.classList.contains('key')) return parseInt(el.parentNode.dataset.midi);
-            return null;
-        };
-
-        // Mouse Events (PC)
-        pianoEl.addEventListener('mousedown', e => {
-            isMouseDown = true;
-            const m = getMidiFromEl(e.target);
-            if(m !== null) noteOn(m);
-        });
-        window.addEventListener('mouseup', () => {
-            isMouseDown = false;
-            // Turn off all keys triggered by mouse if not arp
-            if(!params.arpEnabled) {
-                // Simplified: just turn off keys that were active via mouse logic
-                // For safety, scanning visual keys
-                keysEl.forEach(k => { if(k.el.classList.contains('active')) noteOff(k.midi); });
-            } else {
-                arpKeys.clear();
-            }
-        });
-        pianoEl.addEventListener('mouseover', e => {
-            if(isMouseDown) {
-                const m = getMidiFromEl(e.target);
-                if(m !== null) noteOn(m);
-            }
-        });
-        pianoEl.addEventListener('mouseout', e => {
-            if(isMouseDown) {
-                const m = getMidiFromEl(e.target);
-                if(m !== null) noteOff(m);
-            }
-        });
-
-        // Touch Events (Mobile Multi-touch)
-        const activeTouches = {}; // identifier -> midiNote
-
+        // Touch (Mobile Support)
+        const activeTouches = {};
         pianoEl.addEventListener('touchstart', e => {
-            e.preventDefault(); // Prevent scrolling/zooming
-            for(let i=0; i < e.changedTouches.length; i++) {
+            e.preventDefault();
+            for(let i=0; i<e.changedTouches.length; i++) {
                 const t = e.changedTouches[i];
                 const el = document.elementFromPoint(t.clientX, t.clientY);
-                const m = getMidiFromEl(el);
-                if(m !== null) {
-                    activeTouches[t.identifier] = m;
-                    noteOn(m);
+                if(el) {
+                    const m = getM({target: el});
+                    if(m !== null) { noteOn(m); activeTouches[t.identifier] = m; }
                 }
             }
         }, {passive: false});
 
         pianoEl.addEventListener('touchmove', e => {
-            e.preventDefault(); // Enable glissando
-            for(let i=0; i < e.changedTouches.length; i++) {
+            e.preventDefault();
+            for(let i=0; i<e.changedTouches.length; i++) {
                 const t = e.changedTouches[i];
                 const el = document.elementFromPoint(t.clientX, t.clientY);
-                const m = getMidiFromEl(el);
-                
-                // If finger moved to a new key
-                if(m !== null && activeTouches[t.identifier] !== m) {
-                    // Turn off old note
-                    if(activeTouches[t.identifier] !== undefined) {
-                        noteOff(activeTouches[t.identifier]);
-                    }
-                    // Start new note
-                    activeTouches[t.identifier] = m;
-                    noteOn(m);
-                } else if(m === null && activeTouches[t.identifier] !== undefined) {
-                    // Finger moved off keyboard
-                    noteOff(activeTouches[t.identifier]);
-                    delete activeTouches[t.identifier];
+                const oldM = activeTouches[t.identifier];
+                let newM = null;
+                if(el) newM = getM({target: el});
+
+                if(newM !== null && oldM !== newM) {
+                    if(oldM !== undefined) noteOff(oldM);
+                    noteOn(newM);
+                    activeTouches[t.identifier] = newM;
                 }
             }
         }, {passive: false});
 
-        const handleTouchEnd = (e) => {
+        pianoEl.addEventListener('touchend', e => {
             e.preventDefault();
-            for(let i=0; i < e.changedTouches.length; i++) {
+            for(let i=0; i<e.changedTouches.length; i++) {
                 const t = e.changedTouches[i];
                 const m = activeTouches[t.identifier];
-                if(m !== undefined) {
-                    noteOff(m);
-                    delete activeTouches[t.identifier];
-                }
+                if(m !== undefined) { noteOff(m); delete activeTouches[t.identifier]; }
             }
-        };
-        pianoEl.addEventListener('touchend', handleTouchEnd);
-        pianoEl.addEventListener('touchcancel', handleTouchEnd);
-
+        });
 
         // PC Keys
         const kMap={}; pcKeyMap.forEach((k,i)=>kMap[k]=48+i);
         window.addEventListener('keydown',e=>{if(!e.repeat&&kMap[e.key.toUpperCase()]) noteOn(kMap[e.key.toUpperCase()]);});
         window.addEventListener('keyup',e=>{if(kMap[e.key.toUpperCase()]) noteOff(kMap[e.key.toUpperCase()]);});
         
-        // REC
-        const recBtn=document.getElementById('rec-btn');
-        recBtn.onclick=()=>{
-            initAudio(); // Ensure audio context
-            if(!mediaRecorder||mediaRecorder.state==='inactive'){
-                chunks=[]; mediaRecorder=new MediaRecorder(recStream);
-                mediaRecorder.ondataavailable=e=>chunks.push(e.data);
-                mediaRecorder.onstop=()=>{
-                    const f=prompt("保存ファイル名:", `sonic_rec_${Date.now()}`);
-                    if(!f)return;
-                    const b=new Blob(chunks,{'type':'audio/webm'});
-                    const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=f+".webm"; a.click();
-                };
-                mediaRecorder.start(); recBtn.classList.add('active'); recBtn.innerText='■ STOP';
-            } else { mediaRecorder.stop(); recBtn.classList.remove('active'); recBtn.innerText='● REC'; }
+        // --- REC (ALL FORMATS) ---
+        const recBtn = document.getElementById('rec-btn');
+        const recSelect = document.getElementById('rec-format');
+        
+        // 1. 手動追加 (WAV, MP3)
+        const optWav = document.createElement('option');
+        optWav.value = 'wav'; optWav.innerText = 'WAV (CD Quality)';
+        recSelect.appendChild(optWav);
+
+        const optMp3 = document.createElement('option');
+        optMp3.value = 'mp3'; optMp3.innerText = 'MP3 (Lightweight)';
+        recSelect.appendChild(optMp3);
+
+        // 2. ブラウザ標準 (WebM, MP4等)
+        const supportedTypes = [
+            { type: 'audio/webm', ext: 'webm', label: 'WebM (Browser)' },
+            { type: 'audio/mp4',  ext: 'mp4',  label: 'MP4 (Safari)' },
+        ];
+        supportedTypes.forEach(t => {
+            if (MediaRecorder.isTypeSupported(t.type)) {
+                const opt = document.createElement('option');
+                opt.value = t.type; opt.innerText = t.label; opt.dataset.ext = t.ext;
+                recSelect.appendChild(opt);
+            }
+        });
+
+        recBtn.onclick = () => {
+            initAudio();
+
+            // ■ START REC
+            if (!recBtn.classList.contains('active')) {
+                const type = recSelect.value;
+                
+                // 生データ録音モード (WAV/MP3)
+                if (type === 'wav' || type === 'mp3') {
+                    wavLeft = []; wavRight = [];
+                    isRecording = true;
+                } else {
+                    // 標準モード (WebM/MP4)
+                    chunks = [];
+                    try {
+                        mediaRecorder = new MediaRecorder(recStream, { mimeType: type });
+                    } catch(e) { alert("Error: Not supported format"); return; }
+                    mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                    mediaRecorder.start();
+                }
+
+                recBtn.classList.add('active'); recBtn.innerText = '■ STOP';
+                recSelect.disabled = true;
+
+            // ■ STOP REC & SAVE
+            } else {
+                const f = prompt("保存ファイル名:", `sonic_rec_${Date.now()}`);
+                if (!f) {
+                     // キャンセル処理
+                     isRecording = false; 
+                     if(mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop();
+                     recBtn.classList.remove('active'); recBtn.innerText = '● REC'; recSelect.disabled = false;
+                     return;
+                }
+
+                const type = recSelect.value;
+
+                if (type === 'wav') {
+                    // WAV SAVE
+                    isRecording = false;
+                    const blob = exportWAV(wavLeft, wavRight);
+                    saveBlob(blob, f + ".wav");
+                    wavLeft = []; wavRight = []; // Clear Memory
+                
+                } else if (type === 'mp3') {
+                    // MP3 SAVE
+                    isRecording = false;
+                    recBtn.innerText = 'Encoding...';
+                    setTimeout(() => {
+                        const blob = exportMP3(wavLeft, wavRight);
+                        if(blob) saveBlob(blob, f + ".mp3");
+                        wavLeft = []; wavRight = [];
+                        recBtn.classList.remove('active'); recBtn.innerText = '● REC';
+                        recSelect.disabled = false;
+                    }, 50); // UI更新のために少し遅延
+                    return; // 下の共通リセット処理をスキップ
+
+                } else {
+                    // WebM/MP4 SAVE
+                    mediaRecorder.onstop = () => {
+                        const ext = recSelect.options[recSelect.selectedIndex].dataset.ext;
+                        const blob = new Blob(chunks, { type: type });
+                        saveBlob(blob, f + "." + ext);
+                    };
+                    mediaRecorder.stop();
+                }
+
+                if(type !== 'mp3') {
+                    recBtn.classList.remove('active'); recBtn.innerText = '● REC';
+                    recSelect.disabled = false;
+                }
+            }
         };
+
+        function saveBlob(blob, filename) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+        }
+
+        // --- ENCODER FUNCTIONS ---
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+        }
+
+        function exportWAV(leftBuffers, rightBuffers) {
+            // Flatten
+            const bufferLen = leftBuffers.reduce((acc, b) => acc + b.length, 0);
+            const L = new Float32Array(bufferLen);
+            const R = new Float32Array(bufferLen);
+            let offset = 0;
+            for (let i=0; i<leftBuffers.length; i++) {
+                L.set(leftBuffers[i], offset); R.set(rightBuffers[i], offset);
+                offset += leftBuffers[i].length;
+            }
+
+            // Interleave & Convert to Int16
+            const interleaved = new Int16Array(bufferLen * 2);
+            for (let i=0; i<bufferLen; i++) {
+                let sL = Math.max(-1, Math.min(1, L[i]));
+                let sR = Math.max(-1, Math.min(1, R[i]));
+                interleaved[i*2] = sL < 0 ? sL * 0x8000 : sL * 0x7FFF;
+                interleaved[i*2+1] = sR < 0 ? sR * 0x8000 : sR * 0x7FFF;
+            }
+
+            // Header
+            const buffer = new ArrayBuffer(44 + interleaved.length * 2);
+            const view = new DataView(buffer);
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + interleaved.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 2, true);
+            view.setUint32(24, ctx.sampleRate, true);
+            view.setUint32(28, ctx.sampleRate * 4, true);
+            view.setUint16(32, 4, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, interleaved.length * 2, true);
+
+            const payload = new Uint8Array(buffer, 44);
+            payload.set(new Uint8Array(interleaved.buffer));
+
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        function exportMP3(leftBuffers, rightBuffers) {
+            if(typeof lamejs === 'undefined') {
+                alert("MP3 Library not loaded. Please connect to internet.");
+                return null;
+            }
+
+            const bufferLen = leftBuffers.reduce((acc, b) => acc + b.length, 0);
+            const samplesL = new Int16Array(bufferLen);
+            const samplesR = new Int16Array(bufferLen);
+            let offset = 0;
+            
+            for (let i = 0; i < leftBuffers.length; i++) {
+                const bL = leftBuffers[i]; const bR = rightBuffers[i];
+                for(let j=0; j<bL.length; j++) {
+                    let sL = Math.max(-1, Math.min(1, bL[j]));
+                    let sR = Math.max(-1, Math.min(1, bR[j]));
+                    samplesL[offset + j] = sL < 0 ? sL * 0x8000 : sL * 0x7FFF;
+                    samplesR[offset + j] = sR < 0 ? sR * 0x8000 : sR * 0x7FFF;
+                }
+                offset += bL.length;
+            }
+
+            const mp3encoder = new lamejs.Mp3Encoder(2, ctx.sampleRate || 44100, 128);
+            const mp3Data = [];
+            const sampleBlockSize = 1152;
+            
+            for (let i = 0; i < samplesL.length; i += sampleBlockSize) {
+                const leftChunk = samplesL.subarray(i, i + sampleBlockSize);
+                const rightChunk = samplesR.subarray(i, i + sampleBlockSize);
+                const mp3buf = mp3encoder.encodeBuffer(leftChunk, rightChunk);
+                if (mp3buf.length > 0) mp3Data.push(mp3buf);
+            }
+            const mp3buf = mp3encoder.flush();
+            if (mp3buf.length > 0) mp3Data.push(mp3buf);
+
+            return new Blob(mp3Data, { type: 'audio/mp3' });
+        }
 
         // MIDI
         if(navigator.requestMIDIAccess) navigator.requestMIDIAccess().then(a=>{a.inputs.forEach(i=>i.onmidimessage=m=>{const[c,n,v]=m.data; if(c===144&&v>0){noteOn(n,v/127); document.getElementById('midi-dot').classList.add('on');} if(c===128||(c===144&&v===0)){noteOff(n); document.getElementById('midi-dot').classList.remove('on');}});});
