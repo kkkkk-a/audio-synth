@@ -954,7 +954,11 @@
         
         const optWav = document.createElement('option'); optWav.value = 'wav'; optWav.innerText = 'WAV (CD Quality)'; recSelect.appendChild(optWav);
         const optMp3 = document.createElement('option'); optMp3.value = 'mp3'; optMp3.innerText = 'MP3 (Lightweight)'; recSelect.appendChild(optMp3);
-        const supportedTypes = [{ type: 'audio/webm', ext: 'webm', label: 'WebM (Browser)' }, { type: 'audio/mp4',  ext: 'mp4',  label: 'MP4 (Safari)' }];
+        const supportedTypes = [
+    { type: 'audio/webm', ext: 'webm', label: 'WebM (Opus)' },
+    { type: 'audio/ogg',  ext: 'ogg',  label: 'OGG (Opus/Vorbis)' },
+    { type: 'audio/mp4',  ext: 'mp4',  label: 'MP4 (AAC)' }
+];
         supportedTypes.forEach(t => { if (MediaRecorder.isTypeSupported(t.type)) { const opt = document.createElement('option'); opt.value = t.type; opt.innerText = t.label; opt.dataset.ext = t.ext; recSelect.appendChild(opt); }});
 
         recBtn.onclick = () => {
